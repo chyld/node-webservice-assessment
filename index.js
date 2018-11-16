@@ -3,7 +3,9 @@
  * GET  /
  * GET  /users
  * POST /users
- * GET  /stocks/quote
+ * PUT  /users/deposit/:amount
+ * GET  /stocks/quote/:symbol
+ * POST /stocks/purchase
  *
 */
 
@@ -27,13 +29,13 @@ const pool = mysql.createPool({
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
-// http :8080
+// http -v :8080
 app.get('/', (req, res) => res.send('Hello World!'));
 
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
-// http :8080/users
+// http -v :8080/users
 app.get('/users', (req, res) => {
     pool.getConnection(function(err, connection) {
         if (err) throw err;
@@ -48,11 +50,11 @@ app.get('/users', (req, res) => {
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
-// http post :8080/users username=chyld cash:=30.33
+// http -v post :8080/users username=chyld cash:=30.33
 app.post('/users', (req, res) => {
     pool.getConnection(function(err, connection) {
         if (err) throw err;
-        // check for duplicate users before inserting
+        // TODO: check for duplicate users before inserting
         connection.query('insert into users (username, cash) values (?, ?)', [req.body.username, req.body.cash], (err, results, fields) => {
             if (err) throw err;
             connection.release();
@@ -64,12 +66,60 @@ app.post('/users', (req, res) => {
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------------------------------------------------------------ //
-// http :8080/stocks/quote/goog
+// http -v put :8080/users/deposit/100 X-User:2
+app.put('/users/deposit/:amount', (req, res) => {
+    const userId = req.headers['x-user'];
+    const amount = req.params.amount * 1;
+    pool.getConnection(function(err, connection) {
+        if (err) throw err;
+        connection.query('select * from users where id = ?', [userId], (err, results, fields) => {
+            if (err) throw err;
+            const cash = results[0].cash;
+            const total = cash + amount;
+            connection.query('update users set cash = ? where id = ?', [total, userId], (err, results, fields) => {
+                if (err) throw err;
+                res.json({balance: total});
+            });
+        });
+    });
+});
+
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// http -v :8080/stocks/quote/goog
 app.get('/stocks/quote/:symbol', (req, res) => {
     const symbol = req.params.symbol.toUpperCase()
     yahoo.lookup(symbol).then(data => {
         res.json(data);
     }); 
+});
+
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------------------------------------------------------------ //
+// http -v post :8080/stocks/purchase X-User:2 symbol=aapl shares:=10
+app.post('/stocks/purchase', (req, res) => {
+    const userId = req.headers['x-user'];
+    const symbol = req.body.symbol.toUpperCase();
+    const shares = req.body.shares;
+    pool.getConnection(function(err, connection) {
+        if (err) throw err;
+        connection.query('select * from users where id = ?', [userId], (err, results, fields) => {
+            if (err) throw err;
+            connection.release();
+            const cash = results[0].cash;
+            yahoo.lookup(symbol).then(data => {
+                const price = data.currentPrice;
+                const total = price * shares;
+                if(cash < total){
+                    res.json({error: 'Not enough funds available for this transaction. Please deposit additional funds.'});
+                }else{
+                    res.json({a:3});
+                }
+            }); 
+        });
+    });
 });
 
 // ------------------------------------------------------------------------------------------------------------------------------ //
