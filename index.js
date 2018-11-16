@@ -78,6 +78,7 @@ app.put('/users/deposit/:amount', (req, res) => {
             const total = cash + amount;
             connection.query('update users set cash = ? where id = ?', [total, userId], (err, results, fields) => {
                 if (err) throw err;
+                connection.release();
                 res.json({balance: total});
             });
         });
@@ -107,15 +108,23 @@ app.post('/stocks/purchase', (req, res) => {
         if (err) throw err;
         connection.query('select * from users where id = ?', [userId], (err, results, fields) => {
             if (err) throw err;
-            connection.release();
             const cash = results[0].cash;
             yahoo.lookup(symbol).then(data => {
                 const price = data.currentPrice;
                 const total = price * shares;
                 if(cash < total){
+                    connection.release();
                     res.json({error: 'Not enough funds available for this transaction. Please deposit additional funds.'});
                 }else{
-                    res.json({a:3});
+                    connection.query('insert into stocks (symbol, transaction, shares, price, user_id) values (?, ?, ?, ?, ?);', [symbol, 'B', shares, price, userId], (err, results, fields) => {
+                        if (err) throw err;
+                        const cashRemaining = cash - total;
+                        connection.query('update users set cash = ? where id = ?', [cashRemaining, userId], (err, results, fields) => {
+                            if (err) throw err;
+                            connection.release();
+                            res.json({success: 'You have successfully purchased shares. View your account for details.'});
+                        });
+                    });
                 }
             }); 
         });
