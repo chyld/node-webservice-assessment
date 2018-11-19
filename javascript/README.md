@@ -1,4 +1,4 @@
-# stock-trader-ap
+# stock-trader-api
 
 ### master readme
 
