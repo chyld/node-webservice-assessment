@@ -1,5 +1,6 @@
--- drop table users;
--- mysql -uroot -proot finance < schema.sql
+-- $ echo 'drop table users' | mysql -uroot -p<password> finance
+-- $ mysql -uroot -p<password> finance < schema.sql
+-- $ mysql -uroot -p<password> finance
 
 create table users (
     id int not null auto_increment,

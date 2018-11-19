@@ -1,0 +1,24 @@
+system:
+---------------------------------------
+sudo yum update -y
+sudo service mysqld start
+sudo mysql_secure_installation
+mysql -uroot -p<password>
+
+node:
+---------------------------------------
+nvm install 11
+nvm alias default 11
+nvm list
+npm install
+npm i -g nodemon
+sudo pip install httpie
+
+mysql:
+---------------------------------------
+create database finance;
+populate finance with schema.sql
+
+final:
+---------------------------------------
+remove bash history
